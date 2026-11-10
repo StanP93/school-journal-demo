@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Электронный журнал</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: mobile-first school app. Top bar with roles, then the role's screen; on wide screens the teacher journal sits beside the parent-message feed. */
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --surface-2:#F7F9F8; --ink:#15201C; --muted:#5B6A64; --line:#DAE2DE;
+  --accent:#1E6B57; --accent-ink:#FFFFFF; --accent-soft:#E0EEE8;
+  --absent:#C2410C; --absent-soft:#FBE8DE; --warn:#B7791F; --warn-soft:#FBF1DC;
+  --bubble:#E7F4EC; --shadow:0 1px 2px rgba(20,40,32,.06),0 4px 16px rgba(20,40,32,.05);
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1412; --surface:#161F1C; --surface-2:#1B2522; --ink:#E5EEEA; --muted:#93A39C; --line:#2A3632;
+  --accent:#55B897; --accent-ink:#0C1A15; --accent-soft:#1B3A30;
+  --absent:#F0895B; --absent-soft:#3B2219; --warn:#E3B04B; --warn-soft:#3A2F17;
+  --bubble:#1E3329; --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E1412; --surface:#161F1C; --surface-2:#1B2522; --ink:#E5EEEA; --muted:#93A39C; --line:#2A3632;
+  --accent:#55B897; --accent-ink:#0C1A15; --accent-soft:#1B3A30;
+  --absent:#F0895B; --absent-soft:#3B2219; --warn:#E3B04B; --warn-soft:#3A2F17;
+  --bubble:#1E3329; --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* top bar */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:36px;height:36px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:600;font-size:15px;flex:none}
+.brand h1{font-family:var(--f-display);font-weight:600;font-size:17px;margin:0;letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font-size:12.5px}
+.controls{display:flex;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:500;color:var(--muted);font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.demo-tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:99px;font-weight:600}
+
+/* panels */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:0}
+.panel-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.panel-h h2{font-family:var(--f-display);font-size:14px;font-weight:600;margin:0;letter-spacing:.01em}
+.panel-b{padding:16px}
+.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+
+/* lesson meta */
+.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.meta .topic{grid-column:1/-1}
+@media (max-width:520px){.meta{grid-template-columns:1fr 1fr}.meta .date{grid-column:1/-1}}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field select,.field input,.field textarea{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:9px 10px;min-width:0}
+.field textarea{resize:vertical;min-height:58px}
+
+.stats{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:13px;font-weight:500;background:var(--surface-2);border:1px solid var(--line)}
+.chip.ok{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.chip.no{background:var(--absent-soft);border-color:transparent;color:var(--absent)}
+.link-btn{border:0;background:none;color:var(--accent);cursor:pointer;font-size:13px;font-weight:500;padding:4px 0}
+
+/* student list */
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .n{color:var(--muted);font-size:13px;text-align:right}
+.row .name{font-weight:500;overflow-wrap:anywhere}
+.row.is-absent .name{color:var(--absent)}
+@media (max-width:560px){.row{grid-template-columns:24px minmax(0,1fr) auto}.row .grades{grid-column:2/-1}}
+.att{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.att button{border:0;background:var(--surface);padding:6px 10px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);min-width:52px}
+.att button+button{border-left:1px solid var(--line)}
+.att button.on-yes{background:var(--accent-soft);color:var(--accent)}
+.att button.on-no{background:var(--absent);color:#fff}
+.grades{display:inline-flex;gap:4px}
+.g{width:34px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600}
+.g:hover{border-color:var(--accent)}
+.g.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.g.sel.low{background:var(--absent);border-color:var(--absent);color:#fff}
+.g:disabled{opacity:.35;cursor:not-allowed}
+
+.foot{display:flex;flex-direction:column;gap:12px;padding:16px;border-top:1px solid var(--line)}
+.save-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);padding:11px 18px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.05)}
+.hint{color:var(--muted);font-size:13px}
+
+/* messages */
+.msgs{display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;flex-direction:column;gap:6px}
+.msg .to{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bubble{background:var(--bubble);border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:14px}
+.reply{align-self:flex-end;max-width:85%;background:var(--surface-2);border:1px solid var(--line);border-radius:12px 12px 4px 12px;padding:8px 12px;font-size:14px}
+.reply small{display:block;color:var(--muted);font-size:11.5px}
+.status{font-size:12px;font-weight:600}
+.status.wait{color:var(--warn)}
+.status.sent{color:var(--accent)}
+.empty{color:var(--muted);font-size:14px;padding:8px 0}
+
+/* director / parent */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.kpis{grid-template-columns:1fr}}
+.kpi{padding:14px 16px}
+.kpi b{display:block;font-family:var(--f-display);font-size:26px;font-weight:600;margin-top:4px}
+.kpi span{color:var(--muted);font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:14px}
+.bar-row .who{overflow-wrap:anywhere}
+.track{height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.fill{height:100%;background:var(--accent);border-radius:99px}
+.fill.hi{background:var(--absent)}
+.bar-row .v{text-align:right;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border-top:0}
+.scroll{overflow-x:auto}
+.mark{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:13px;margin:0 3px 3px 0}
+.mark.low{background:var(--absent-soft);color:var(--absent)}
+.mark.n{background:var(--absent);color:#fff;font-size:11px}
+.hw{display:flex;flex-direction:column;gap:10px}
+.hw div{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.hw b{min-width:110px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+@media (prefers-reduced-motion:no-preference){.toast{animation:up .25s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,8px)}}}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const T={
+ ru:{school:"Средняя школа · демо", teacher:"Учитель", parent:"Родитель", director:"Директор", demo:"Демо",
+  journal:"Журнал урока", cls:"Класс", subj:"Предмет", date:"Дата", topic:"Тема урока",
+  present:"Присутствуют", absent:"Отсутствуют", allPresent:"Отметить всех", yes:"Был", no:"Нет",
+  hw:"Домашнее задание", save:"Сохранить урок", saveHint:"Сообщения уйдут родителям отсутствующих сразу после сохранения",
+  msgs:"Сообщения родителям", wait:"Ждёт сохранения", sent:"Отправлено", none:"Все на месте. Сообщений нет.",
+  parentOf:"Родитель", replyFrom:"Ответ родителя",
+  msg:(n,d,s)=>`Здравствуйте! Ваш ребенок ${n} сегодня ${d} отсутствовал на уроке ${s}. Причина?`,
+  saved:k=>k?`Урок сохранён. Отправлено сообщений: ${k}`:"Урок сохранён",
+  teacherName:"Мамбетова Гульнара Кадыровна",
+  kMiss:"Пропусков за ноябрь", kAtt:"Посещаемость", kSent:"Сообщений родителям",
+  byClass:"Пропуски по классам", byTeacher:"Пропуски на уроках учителей", period:"Ноябрь 2026",
+  child:"Асанова Айпери · 7 «Б»", grades:"Оценки за ноябрь", attendance:"Посещаемость", hwList:"Домашние задания",
+  missed:"Пропусков", nb:"н", subject:"Предмет", marks:"Оценки", avg:"Средний"},
+ ky:{school:"Орто мектеп · демо", teacher:"Мугалим", parent:"Ата-эне", director:"Директор", demo:"Демо",
+  journal:"Сабак журналы", cls:"Класс", subj:"Сабак", date:"Күнү", topic:"Сабактын темасы",
+  present:"Катышты", absent:"Келген жок", allPresent:"Баарын белгилөө", yes:"Бар", no:"Жок",
+  hw:"Үй тапшырмасы", save:"Сабакты сактоо", saveHint:"Сактагандан кийин келбегендердин ата-энелерине билдирүү кетет",
+  msgs:"Ата-энелерге билдирүүлөр", wait:"Сактоону күтүүдө", sent:"Жөнөтүлдү", none:"Баары келди. Билдирүү жок.",
+  parentOf:"Ата-энеси", replyFrom:"Ата-энесинин жообу",
+  msg:(n,d,s)=>`Саламатсызбы! Сиздин балаңыз ${n} бүгүн ${d} ${s} сабагына келген жок. Себеби?`,
+  saved:k=>k?`Сабак сакталды. Жөнөтүлгөн билдирүүлөр: ${k}`:"Сабак сакталды",
+  teacherName:"Мамбетова Гульнара Кадыровна",
+  kMiss:"Ноябрдагы калтыруулар", kAtt:"Катышуу", kSent:"Ата-энелерге билдирүүлөр",
+  byClass:"Класстар боюнча калтыруулар", byTeacher:"Мугалимдердин сабактарында", period:"Ноябрь 2026",
+  child:"Асанова Айпери · 7 «Б»", grades:"Ноябрдагы баалар", attendance:"Катышуу", hwList:"Үй тапшырмалары",
+  missed:"Калтырган", nb:"ж", subject:"Сабак", marks:"Баалар", avg:"Орточо"}
+};
+const SUBJ={ru:["Математика","Русский язык","Кыргызский язык","Физика","История","Английский язык"],
+            ky:["Математика","Орус тили","Кыргыз тили","Физика","Тарых","Англис тили"]};
+const CLASSES=["5 «А»","6 «Б»","7 «А»","7 «Б»","8 «А»","9 «В»"];
+const names=[["Абдыкадыров Нурсултан",""],["Асанова Айпери",4],["Бекмуратов Эрлан",""],["Жумабаева Нурайым",5],
+ ["Иванов Артём",""],["Исаков Бакыт",3],["Касымова Алина",""],["Кененбаев Темирлан",""],["Мамытова Бегимай",5],
+ ["Осмонов Адилет",""],["Петрова Дарья",4],["Садыков Тимур",""],["Токтогулова Айзада",""],["Усенов Эмир",2],["Шаршеева Сезим",""]];
+const phones=["+996 555 214 380","+996 700 118 472","+996 772 903 615","+996 550 467 129","+996 707 331 806","+996 555 780 244","+996 777 652 913","+996 709 245 670","+996 552 318 497","+996 703 579 162","+996 556 904 338","+996 779 120 645","+996 705 863 471","+996 551 436 782","+996 774 289 053"];
+const S={lang:"ru",role:"teacher",cls:3,subj:0,date:"2026-11-10",topic:{ru:"Решение линейных уравнений",ky:"Сызыктуу теңдемелерди чыгаруу"},
+ hw:{ru:"§14, № 312–318 (чётные)",ky:"§14, № 312–318 (жуп сандар)"},saved:false,sentAt:null,replies:{},
+ students:names.map((x,i)=>({id:i,name:x[0],present:!(i===4||i===9),grade:x[1]}))};
+try{const l=localStorage.getItem("ej-lang");if(l==="ky"||l==="ru")S.lang=l}catch(e){}
+
+const t=()=>T[S.lang];
+const short=n=>{const [f,i]=n.split(" ");return `${f} ${i[0]}.`};
+const fmtDate=d=>d.split("-").reverse().join(".");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function header(){
+ const L=t();
+ return `<header class="top">
+  <div class="brand"><div class="logo">ЭЖ</div><div><h1>Электронный журнал</h1><small>${L.school}</small></div><span class="demo-tag">${L.demo}</span></div>
+  <div class="controls">
+   <div class="seg" role="group" aria-label="Роль">${["teacher","parent","director"].map(r=>`<button data-role="${r}" aria-pressed="${S.role===r}">${L[r]}</button>`).join("")}</div>
+   <div class="seg" role="group" aria-label="Язык">${[["ru","RU"],["ky","KG"]].map(([k,v])=>`<button data-lang="${k}" aria-pressed="${S.lang===k}">${v}</button>`).join("")}</div>
+  </div></header>`;
+}
+
+function teacher(){
+ const L=t(), st=S.students, abs=st.filter(s=>!s.present);
+ const rows=st.map((s,i)=>`<div class="row ${s.present?"":"is-absent"}">
+   <span class="n num">${i+1}</span><span class="name">${esc(s.name)}</span>
+   <span class="att"><button data-att="${s.id}" data-v="1" class="${s.present?"on-yes":""}" aria-pressed="${s.present}">${L.yes}</button><button data-att="${s.id}" data-v="0" class="${s.present?"":"on-no"}" aria-pressed="${!s.present}">${L.no}</button></span>
+   <span class="grades">${[2,3,4,5].map(g=>`<button class="g num ${s.grade===g?"sel":""} ${g<=2?"low":""}" data-grade="${s.id}" data-v="${g}" ${s.present?"":"disabled"} aria-label="${g}">${g}</button>`).join("")}</span>
+ </div>`).join("");
+ return `<div class="grid">
+ <section class="panel">
+  <div class="panel-h"><h2>${L.journal}</h2><span class="hint">${L.teacherName}</span></div>
+  <div class="panel-b" style="display:flex;flex-direction:column;gap:14px">
+   <div class="meta">
+    <label class="field"><span class="label">${L.cls}</span><select id="f-cls">${CLASSES.map((c,i)=>`<option value="${i}" ${i===S.cls?"selected":""}>${c}</option>`).join("")}</select></label>
+    <label class="field"><span class="label">${L.subj}</span><select id="f-subj">${SUBJ[S.lang].map((c,i)=>`<option value="${i}" ${i===S.subj?"selected":""}>${c}</option>`).join("")}</select></label>
+    <label class="field date"><span class="label">${L.date}</span><input id="f-date" type="date" value="${S.date}"></label>
+    <label class="field topic"><span class="label">${L.topic}</span><input id="f-topic" value="${esc(S.topic[S.lang])}"></label>
+   </div>
+   <div class="stats"><span class="chip ok num">${L.present}: ${st.length-abs.length}</span><span class="chip no num">${L.absent}: ${abs.length}</span><button class="link-btn" data-all>${L.allPresent}</button></div>
+   <div class="list">${rows}</div>
+  </div>
+  <div class="foot">
+   <label class="field"><span class="label">${L.hw}</span><textarea id="f-hw">${esc(S.hw[S.lang])}</textarea></label>
+   <div class="save-row"><span class="hint">${L.saveHint}</span><button class="btn" data-save>${L.save}</button></div>
+  </div>
+ </section>
+ <aside class="panel">
+  <div class="panel-h"><h2>${L.msgs}</h2><span class="chip num">${abs.length}</span></div>
+  <div class="panel-b msgs">${abs.length?abs.map(s=>`<div class="msg">
+    <div class="to"><span>${L.parentOf}: <span class="num">${phones[s.id]}</span></span><span class="status ${S.saved?"sent":"wait"}">${S.saved?`${L.sent} ${S.sentAt}`:L.wait}</span></div>
+    <div class="bubble">${esc(L.msg(short(s.name),fmtDate(S.date),SUBJ[S.lang][S.subj]))}</div>
+    ${S.replies[s.id]?`<div class="reply"><small>${L.replyFrom}</small>${esc(S.replies[s.id][S.lang])}</div>`:""}
+   </div>`).join(""):`<div class="empty">${L.none}</div>`}</div>
+ </aside></div>`;
+}
+
+function director(){
+ const L=t(), today=S.saved?S.students.filter(s=>!s.present).length:0;
+ const cls=[["5 «А»",11],["6 «Б»",7],["7 «А»",9],["7 «Б»",14+today],["8 «А»",18],["9 «В»",6]];
+ const tch=[["Мамбетова Г. К.",S.lang==="ru"?"математика":"математика",16+today],["Осмонова Ж. Т.",S.lang==="ru"?"русский язык":"орус тили",12],["Сыдыков Р. А.",S.lang==="ru"?"физика":"физика",14],["Ким Е. В.",S.lang==="ru"?"английский":"англис тили",9],["Турдубаев Н. С.",S.lang==="ru"?"история":"тарых",8]];
+ const total=cls.reduce((a,c)=>a+c[1],0), mc=Math.max(...cls.map(c=>c[1])), mt=Math.max(...tch.map(c=>c[2]));
+ const bar=(who,v,m)=>`<div class="bar-row"><span class="who">${who}</span><span class="track"><span class="fill ${v===m?"hi":""}" style="width:${Math.round(v/m*100)}%;display:block"></span></span><span class="v num">${v}</span></div>`;
+ return `<div class="kpis">
+   <div class="panel kpi"><span>${L.kMiss}</span><b class="num">${total}</b></div>
+   <div class="panel kpi"><span>${L.kAtt}</span><b class="num">96,1%</b></div>
+   <div class="panel kpi"><span>${L.kSent}</span><b class="num">${41+today}</b></div>
+  </div>
+  <div class="two">
+   <section class="panel"><div class="panel-h"><h2>${L.byClass}</h2><span class="hint">${L.period}</span></div><div class="panel-b bars">${cls.map(c=>bar(c[0],c[1],mc)).join("")}</div></section>
+   <section class="panel"><div class="panel-h"><h2>${L.byTeacher}</h2><span class="hint">${L.period}</span></div><div class="panel-b bars">${tch.map(c=>bar(`${c[0]} <span class="hint">· ${c[1]}</span>`,c[2],mt)).join("")}</div></section>
+  </div>`;
+}
+
+function parent(){
+ const L=t(), sj=SUBJ[S.lang];
+ const data=[[0,[5,4,"н",5,4]],[1,[4,4,5]],[2,[5,5,4]],[3,[3,4]],[4,[5,4]],[5,[5,5,5]]];
+ const mk=v=>v==="н"?`<span class="mark n">${L.nb}</span>`:`<span class="mark num ${v<=3?"low":""}">${v}</span>`;
+ const avg=a=>{const n=a.filter(x=>x!=="н");return (n.reduce((p,c)=>p+c,0)/n.length).toFixed(1).replace(".",",")};
+ const hw=S.lang==="ru"?[["Математика","§14, № 312–318 (чётные)","к 12.11"],["Русский язык","Упр. 186, выучить правило","к 11.11"],["Физика","§9, задачи 3–5","к 13.11"],["История","Конспект параграфа 11","к 12.11"]]
+   :[["Математика","§14, № 312–318 (жуп сандар)","12.11 чейин"],["Орус тили","186-көнүгүү, эрежени жаттоо","11.11 чейин"],["Физика","§9, 3–5-маселелер","13.11 чейин"],["Тарых","11-параграфтын конспекти","12.11 чейин"]];
+ return `<div class="panel"><div class="panel-h"><h2>${L.child}</h2><span class="chip no num">${L.missed}: 1</span></div></div>
+ <div class="two">
+  <section class="panel"><div class="panel-h"><h2>${L.grades}</h2></div><div class="panel-b scroll"><table>
+   <thead><tr><th>${L.subject}</th><th>${L.marks}</th><th>${L.avg}</th></tr></thead>
+   <tbody>${data.map(([i,m])=>`<tr><td>${sj[i]}</td><td>${m.map(mk).join("")}</td><td class="num"><b>${avg(m)}</b></td></tr>`).join("")}</tbody></table></div></section>
+  <section class="panel"><div class="panel-h"><h2>${L.hwList}</h2></div><div class="panel-b hw">${hw.map(h=>`<div><b>${h[0]}</b><span>${h[1]}</span><span class="hint num">${h[2]}</span></div>`).join("")}</div></section>
+ </div>`;
+}
+
+function render(){
+ document.documentElement.lang=S.lang==="ru"?"ru":"ky";
+ const body=S.role==="teacher"?teacher():S.role==="director"?director():parent();
+ document.getElementById("app").innerHTML=header()+body;
+}
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
+function dirty(){if(S.saved){S.saved=false;S.replies={}}}
+
+document.addEventListener("click",e=>{
+ const b=e.target.closest("button");if(!b)return;
+ if(b.dataset.role){S.role=b.dataset.role;render();return}
+ if(b.dataset.lang){S.lang=b.dataset.lang;try{localStorage.setItem("ej-lang",S.lang)}catch(_){ }render();return}
+ if(b.dataset.att!==undefined){const s=S.students[+b.dataset.att];s.present=b.dataset.v==="1";if(!s.present)s.grade="";dirty();render();return}
+ if(b.dataset.grade!==undefined){const s=S.students[+b.dataset.grade],v=+b.dataset.v;s.grade=s.grade===v?"":v;render();return}
+ if(b.hasAttribute("data-all")){S.students.forEach(s=>s.present=true);dirty();render();return}
+ if(b.hasAttribute("data-save")){
+  const d=new Date();S.saved=true;S.sentAt=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const abs=S.students.filter(s=>!s.present);render();toast(t().saved(abs.length));
+  if(abs.length){const id=abs[0].id;setTimeout(()=>{if(S.saved){S.replies[id]={ru:"Здравствуйте, у него температура, сегодня дома. Справку принесём.",ky:"Саламатсызбы, ысыгы көтөрүлүп, бүгүн үйдө. Маалымкат алып келебиз."};if(S.role==="teacher")render()}},1800)}
+ }
+});
+document.addEventListener("change",e=>{
+ const id=e.target.id;
+ if(id==="f-cls")S.cls=+e.target.value;
+ if(id==="f-subj"){S.subj=+e.target.value;dirty()}
+ if(id==="f-date"&&e.target.value){S.date=e.target.value;dirty()}
+ if(id==="f-cls"||id==="f-subj"||id==="f-date")render();
+});
+document.addEventListener("input",e=>{
+ if(e.target.id==="f-topic")S.topic[S.lang]=e.target.value;
+ if(e.target.id==="f-hw")S.hw[S.lang]=e.target.value;
+});
+render();
+</script>
+</body>
+</html>
